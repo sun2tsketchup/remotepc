@@ -1,0 +1,44 @@
+plugins { id 'com.android.application' }
+
+// Phiên bản app: truyền từ CI (-PappVersion=0.4.0 -PappCode=4), mặc định để build tay.
+def appVersion = project.findProperty('appVersion') ?: '0.4.0'
+def appCode = (project.findProperty('appCode') ?: '4') as int
+
+android {
+    namespace 'vn.remotepc.app'
+    compileSdk 34
+    defaultConfig {
+        applicationId 'vn.remotepc.app'
+        minSdk 24
+        targetSdk 34
+        versionCode appCode
+        versionName appVersion
+    }
+    signingConfigs {
+        release {
+            // Khoá ký app nằm trong GitHub Secrets, không lưu trong repo.
+            def ks = System.getenv('ANDROID_KEYSTORE_FILE')
+            if (ks) {
+                storeFile file(ks)
+                storePassword System.getenv('ANDROID_KEYSTORE_PASSWORD')
+                keyAlias System.getenv('ANDROID_KEY_ALIAS')
+                keyPassword System.getenv('ANDROID_KEY_PASSWORD')
+            }
+        }
+    }
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig System.getenv('ANDROID_KEYSTORE_FILE') ? signingConfigs.release : signingConfigs.debug
+        }
+    }
+    buildFeatures { buildConfig true }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+
+dependencies {
+    implementation 'com.journeyapps:zxing-android-embedded:4.3.0'
+}

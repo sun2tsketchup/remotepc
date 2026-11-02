@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>RemotePC</title>
+<style>
+:root{--bg:#0b1220;--panel:#121b2e;--line:#22304d;--text:#e6edf7;--mute:#8a9bb8;--acc:#38bdf8;--bad:#f87171}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.45 system-ui,Roboto,sans-serif;padding:24px 16px}
+h1{margin:0 0 4px;font-size:24px}
+.ver{color:var(--mute);font-size:12px}
+.err{background:#3b1520;border:1px solid #7f1d1d;color:#fecaca;padding:10px 12px;border-radius:10px;margin:14px 0}
+.list{margin:18px 0;display:flex;flex-direction:column;gap:10px}
+.pc{display:flex;align-items:center;gap:10px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px}
+.pc .info{flex:1;min-width:0}
+.pc b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pc span{color:var(--mute);font-size:12px;word-break:break-all}
+button{font:inherit;color:var(--text);background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 14px;min-height:44px}
+button.pri{background:var(--acc);color:#04111d;border:0;font-weight:600}
+.row{display:flex;gap:10px;flex-wrap:wrap}
+.row button{flex:1}
+input{width:100%;font:inherit;padding:12px;border-radius:10px;border:1px solid var(--line);background:var(--panel);color:var(--text);margin:8px 0}
+.empty{color:var(--mute);padding:18px;text-align:center;border:1px dashed var(--line);border-radius:12px}
+.del{color:var(--bad);min-width:44px;padding:8px}
+</style>
+</head>
+<body>
+<h1>🖥️ RemotePC</h1>
+<div class="ver" id="ver"></div>
+<div id="err" class="err" hidden></div>
+
+<div class="list" id="list"></div>
+
+<div class="row">
+  <button class="pri" id="scanBtn">📷 Quét mã QR</button>
+  <button id="addBtn">⌨️ Nhập địa chỉ</button>
+</div>
+<div id="addBox" hidden>
+  <input id="addr" placeholder="Ví dụ: 192.168.1.10:8765 hoặc link https://…" autocapitalize="off" autocorrect="off" inputmode="url">
+  <div class="row"><button class="pri" id="addOk">Kết nối</button><button id="addCancel">Huỷ</button></div>
+</div>
+<p class="ver">Mở RemotePC trên máy tính, rồi quét mã QR hiện trên cửa sổ. Máy đã ghép nối sẽ được lưu lại ở đây.</p>
+
+<script>
+"use strict";
+const $=id=>document.getElementById(id);
+const app=window.RemotePCApp;
+function load(){ try{ return JSON.parse(app.getPcs()) }catch{ return [] } }
+function save(l){ app.savePcs(JSON.stringify(l)); render(); }
+function parse(text){
+  text=text.trim(); if(!text) return null;
+  if(!/^https?:\/\//i.test(text)) text="http://"+text;
+  let u; try{ u=new URL(text) }catch{ return null }
+  if(!u.port && u.protocol==="http:" && /^\d+\.\d+\.\d+\.\d+$/.test(u.hostname)) u.port="8765";
+  return {origin:u.origin, full:u.origin+"/"+u.search};
+}
+function connect(text){
+  const p=parse(text); if(!p){ alert("Địa chỉ không hợp lệ"); return; }
+  const l=load().filter(x=>x.url!==p.origin);
+  l.unshift({url:p.origin,name:p.origin.replace(/^https?:\/\//,""),t:Date.now()});
+  save(l.slice(0,20));
+  app.open(p.full);
+}
+function render(){
+  const l=load(), box=$("list"); box.innerHTML="";
+  if(!l.length){ box.innerHTML='<div class="empty">Chưa có máy tính nào</div>'; return; }
+  l.forEach((pc,i)=>{
+    const d=document.createElement("div"); d.className="pc";
+    d.innerHTML='<div class="info"><b></b><span></span></div><button class="pri">Mở</button><button class="del">✕</button>';
+    d.querySelector("b").textContent=pc.name; d.querySelector("span").textContent=pc.url;
+    d.querySelector(".pri").onclick=()=>connect(pc.url);
+    d.querySelector(".del").onclick=()=>{ if(confirm("Xoá "+pc.name+" khỏi danh sách?")){ const x=load(); x.splice(i,1); save(x);} };
+    box.appendChild(d);
+  });
+}
+window.onScanned=text=>connect(text);
+$("scanBtn").onclick=()=>app.scan();
+$("addBtn").onclick=()=>{ $("addBox").hidden=false; $("addr").focus(); };
+$("addCancel").onclick=()=>{ $("addBox").hidden=true; };
+$("addOk").onclick=()=>connect($("addr").value);
+$("ver").textContent="Phiên bản app "+app.version();
+const m=location.hash.match(/err=([^&]+)/);
+if(m){ $("err").textContent=decodeURIComponent(m[1]); $("err").hidden=false; }
+render();
+</script>
+</body>
+</html>

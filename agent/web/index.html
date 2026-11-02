@@ -1,0 +1,554 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0b1220">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>RemotePC</title>
+<style>
+:root{--bg:#0b1220;--panel:#121b2e;--line:#22304d;--text:#e6edf7;--mute:#8a9bb8;--acc:#38bdf8;--bad:#f87171;--ok:#4ade80}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font:15px/1.4 -apple-system,system-ui,Segoe UI,Roboto,sans-serif;overscroll-behavior:none}
+body{display:flex;flex-direction:column;height:100dvh;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
+button{font:inherit;color:var(--text);background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:9px 10px;min-height:40px;touch-action:manipulation}
+button:active{background:#1d2a45}
+button.on{background:var(--acc);color:#04111d;border-color:var(--acc)}
+.hidden{display:none!important}
+/* pairing */
+#pair{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:24px;text-align:center}
+#pair h1{margin:0;font-size:26px}
+#pair p{margin:0;color:var(--mute);max-width:320px}
+#pin{font-size:30px;letter-spacing:10px;text-align:center;width:230px;padding:10px;border-radius:12px;border:1px solid var(--line);background:var(--panel);color:var(--text)}
+#pairBtn{width:230px;background:var(--acc);color:#04111d;font-weight:600;border:0}
+#pairErr{color:var(--bad);min-height:20px}
+/* main */
+#main{flex:1;display:flex;flex-direction:column;min-height:0}
+#top{display:flex;align-items:center;gap:8px;padding:6px 10px;border-bottom:1px solid var(--line);font-size:13px}
+#dot{width:9px;height:9px;border-radius:50%;background:var(--bad);flex:none}
+#dot.ok{background:var(--ok)}
+#host{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#fps{color:var(--mute)}
+#top button{min-height:32px;padding:4px 10px}
+#stage{flex:1;position:relative;overflow:hidden;background:#000;touch-action:none;min-height:0}
+#screen{position:absolute;user-select:none;-webkit-user-select:none;pointer-events:none}
+#cursor{position:absolute;width:22px;height:30px;margin:0;pointer-events:none;filter:drop-shadow(0 1px 2px rgba(0,0,0,.7));z-index:2}
+#monBar{display:flex;gap:4px}
+#monBar button{min-height:32px;padding:4px 9px}
+#hint{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--mute);padding:20px;text-align:center;pointer-events:none}
+#quick{display:flex;gap:6px;padding:8px 8px 0;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+#quick::-webkit-scrollbar{display:none}
+#quick button{flex:none;min-height:36px;padding:6px 12px;font-size:13px;white-space:nowrap}
+#quick .sep{flex:none;width:1px;background:var(--line);margin:4px 2px}
+#bar{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;padding:8px}
+#bar button{padding:8px 2px;font-size:13px}
+.sheet{border-top:1px solid var(--line);background:var(--panel);padding:8px;max-height:46dvh;overflow:auto}
+.grid{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-top:6px}
+.grid button{font-size:13px;padding:8px 2px}
+#typer{width:100%;font-size:16px;padding:10px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--text)}
+.row{display:flex;gap:8px;align-items:center;margin:8px 0;flex-wrap:wrap}
+.row label{color:var(--mute);min-width:90px}
+select{font:inherit;background:var(--bg);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:6px}
+#toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%);background:#000c;padding:8px 14px;border-radius:20px;font-size:13px;opacity:0;transition:opacity .3s;pointer-events:none}
+#toast.show{opacity:1}
+</style>
+</head>
+<body>
+
+<section id="pair">
+  <h1>🖥️ RemotePC</h1>
+  <p>Nhập mã PIN 6 số đang hiện trên cửa sổ RemotePC của máy tính.</p>
+  <input id="pin" inputmode="numeric" maxlength="6" autocomplete="one-time-code" placeholder="••••••">
+  <button id="pairBtn">Kết nối</button>
+  <div id="pairErr"></div>
+</section>
+
+<section id="main" class="hidden">
+  <div id="top">
+    <span id="dot"></span><span id="host">Đang kết nối…</span><span id="fps"></span>
+    <div id="monBar"></div>
+    <button id="zoomBtn">1x</button>
+    <button id="audioBtn" title="Nghe âm thanh máy tính">🔇</button>
+    <button id="fsBtn">⛶</button>
+  </div>
+  <div id="stage">
+    <img id="screen" alt="">
+    <svg id="cursor" class="hidden" viewBox="0 0 22 30"><path d="M1.5 1.5v23l6-5.5 4 9 4-1.8-4-8.7h8z" fill="#fff" stroke="#000" stroke-width="1.6" stroke-linejoin="round"/></svg>
+    <div id="hint">Đang chờ hình ảnh…</div>
+  </div>
+
+  <div id="kbSheet" class="sheet hidden">
+    <input id="typer" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Chạm vào đây và gõ, chữ sẽ gửi sang máy tính">
+    <div class="grid" id="mods">
+      <button data-mod="ctrl">Ctrl</button><button data-mod="alt">Alt</button><button data-mod="shift">Shift</button><button data-mod="win">Win</button><button data-key="esc">Esc</button>
+    </div>
+    <div class="grid">
+      <button data-key="tab">Tab</button><button data-key="up">↑</button><button data-key="enter">Enter</button><button data-key="backspace">⌫</button><button data-key="delete">Del</button>
+      <button data-key="left">←</button><button data-key="down">↓</button><button data-key="right">→</button><button data-key="home">Home</button><button data-key="end">End</button>
+      <button data-combo="mod+c">Copy</button><button data-combo="mod+v">Paste</button><button data-combo="mod+x">Cut</button><button data-combo="mod+z">Undo</button><button data-combo="mod+a">Chọn hết</button>
+      <button data-combo="alt+tab">Alt+Tab</button><button data-combo="alt+f4">Đóng cửa sổ</button><button data-combo="win+d">Desktop</button><button data-key="f5">F5</button><button data-key="f11">F11</button>
+    </div>
+  </div>
+
+  <div id="mediaSheet" class="sheet hidden">
+    <div class="grid">
+      <button data-key="voldown">🔉</button><button data-key="volup">🔊</button><button data-key="mute">🔇</button><button data-key="playpause">⏯</button><button data-key="next">⏭</button>
+      <button data-key="prev">⏮</button><button data-key="space">Space</button><button data-key="pageup">PgUp</button><button data-key="pagedown">PgDn</button><button data-key="printscreen">PrtSc</button>
+    </div>
+  </div>
+
+  <div id="setSheet" class="sheet hidden">
+    <div class="row"><label>Chất lượng</label>
+      <select id="qSel">
+        <option value="800,45,10">Tiết kiệm</option>
+        <option value="1280,60,15" selected>Vừa</option>
+        <option value="1920,75,20">Nét</option>
+      </select></div>
+    <div class="row"><label>Tốc độ chuột</label><input id="speed" type="range" min="0.5" max="3" step="0.25" value="1"></div>
+    <div class="row"><label>Truyền hình</label><button id="streamBtn" class="on">Đang bật</button></div>
+    <div class="row"><button id="unpairBtn" style="color:var(--bad)">Huỷ ghép nối máy này</button></div>
+    <p id="verInfo" style="color:var(--mute);font-size:12px;margin:4px 0"></p>
+    <p style="color:var(--mute);font-size:12px;margin:4px 0">Chạm ở đâu trên màn hình cũng được: con trỏ không nhảy tới ngón tay mà đi theo hướng kéo (tốc độ 1 = đi đúng bằng quãng ngón tay). Chạm = click, chạm 2 ngón = chuột phải, kéo 2 ngón = cuộn, giữ rồi kéo = kéo thả. Nút "Giữ chuột" giữ nút trái để kéo thả dài. Chuột rời (máy tính bảng): trỏ tới đâu chuột máy tính tới đó, dùng được trái/phải/giữa, giữ và kéo, con lăn; bàn phím rời gửi thẳng phím sang máy tính.</p>
+  </div>
+
+  <div id="quick">
+    <button data-hold-btn="middle">Giữ chuột giữa</button>
+    <button data-hold-key="ctrl">Ctrl</button>
+    <button data-hold-key="shift">Shift</button>
+    <button data-hold-key="alt">Alt</button>
+    <span class="sep"></span>
+    <button data-key="esc">Esc</button>
+    <button data-key="enter">Enter</button>
+    <button data-key="delete">Delete</button>
+    <button data-combo="mod+z">Undo</button>
+    <button data-combo="mod+y">Redo</button>
+    <button data-combo="mod+c">Copy</button>
+    <button data-combo="mod+v">Paste</button>
+    <button data-combo="mod+s">Lưu</button>
+    <button data-combo="alt+tab">Alt+Tab</button>
+    <button data-combo="win+d">Desktop</button>
+  </div>
+  <div id="bar">
+    <button id="holdBtn">Giữ chuột</button>
+    <button id="lBtn">Trái</button>
+    <button id="rBtn">Phải</button>
+    <button data-sheet="kbSheet">⌨️</button>
+    <button data-sheet="mediaSheet">🎵</button>
+    <button data-sheet="setSheet">⚙️</button>
+  </div>
+</section>
+<div id="toast"></div>
+
+<script>
+"use strict";
+const $ = id => document.getElementById(id);
+const store = {
+  get(k){ try { return localStorage.getItem(k) } catch { return null } },
+  set(k,v){ try { localStorage.setItem(k,v) } catch {} },
+  del(k){ try { localStorage.removeItem(k) } catch {} },
+};
+function toast(msg){ const t=$("toast"); t.textContent=msg; t.classList.add("show"); clearTimeout(toast.h); toast.h=setTimeout(()=>t.classList.remove("show"),1800); }
+
+/* ------------------------------------------------------------ pairing */
+async function pair(pin){
+  $("pairErr").textContent="";
+  try{
+    const r = await fetch("api/pair",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({pin})});
+    const j = await r.json();
+    if(!r.ok) throw new Error(j.error||"Lỗi ghép nối");
+    store.set("token", j.token);
+    history.replaceState(null,"",location.pathname);
+    start();
+  }catch(e){ $("pairErr").textContent=e.message; }
+}
+$("pairBtn").onclick = () => pair($("pin").value.trim());
+$("pin").addEventListener("keydown", e => { if(e.key==="Enter") pair($("pin").value.trim()); });
+
+async function boot(){
+  const pin = new URLSearchParams(location.search).get("pin");
+  const tok = store.get("token");
+  if(tok){
+    const r = await fetch("api/check?token="+encodeURIComponent(tok)).catch(()=>null);
+    if(r && r.ok) return start();
+    if(r && r.status===401) store.del("token");
+  }
+  if(pin) return pair(pin);
+  $("pin").focus();
+}
+
+/* ------------------------------------------------------------ connection */
+let ws=null, info=null, frameMeta=null, retry=0, frames=0, zoom=1, streaming=true;
+let cursorN = null;   // vị trí con trỏ chuẩn hoá {x,y}
+let lastLocalMove = 0, curMon = 1, lastMouse = 0, view = {left:0,top:0,w:0};
+function buildMonBar(list){
+  const bar=$("monBar"); bar.innerHTML="";
+  if(list.length<2) return;
+  const saved=+store.get("mon");
+  curMon = (saved===0 || list.some(x=>x.i===saved)) && store.get("mon")!==null ? saved : 1;
+  const opts=[...list.map(x=>({i:x.i,label:"MH"+x.i})),{i:0,label:"Tất cả"}];
+  for(const o of opts){
+    const b=document.createElement("button"); b.textContent=o.label; b.dataset.mon=o.i;
+    b.onclick=()=>selectMon(o.i); bar.appendChild(b);
+  }
+  selectMon(curMon);
+}
+function selectMon(i){
+  curMon=i; store.set("mon",String(i)); send({t:"cfg",mon:i});
+  document.querySelectorAll("#monBar button").forEach(b=>b.classList.toggle("on",+b.dataset.mon===i));
+  cursorN=null;
+}
+const img = $("screen");
+
+function send(o){ if(ws && ws.readyState===1) ws.send(JSON.stringify(o)); }
+
+function start(){
+  $("pair").classList.add("hidden"); $("main").classList.remove("hidden");
+  connect();
+  setInterval(()=>{ $("fps").textContent = streaming ? frames+" fps" : ""; frames=0; },1000);
+}
+
+function connect(){
+  const proto = location.protocol==="https:"?"wss":"ws";
+  ws = new WebSocket(`${proto}://${location.host}/ws?token=${encodeURIComponent(store.get("token")||"")}`);
+  ws.binaryType="blob";
+  ws.onopen = ()=>{ retry=0; $("dot").classList.add("ok"); applyQuality(); };
+  ws.onclose = ev=>{
+    $("dot").classList.remove("ok"); $("host").textContent="Mất kết nối, đang thử lại…";
+    heldBtns.clear(); heldMods.clear(); document.querySelectorAll("[data-hold-btn],[data-hold-key]").forEach(b=>b.classList.remove("on"));
+    setTimeout(async ()=>{
+      const r = await fetch("api/check?token="+encodeURIComponent(store.get("token")||"")).catch(()=>null);
+      if(r && r.status===401){ store.del("token"); location.reload(); return; }
+      connect();
+    }, Math.min(8000, 500*2**retry++));
+  };
+  ws.onmessage = ev=>{
+    if(typeof ev.data !== "string"){ showFrame(ev.data); return; }
+    const m = JSON.parse(ev.data);
+    if(m.t==="hello"){
+      info=m; $("host").textContent = m.host + (m.input?"":" (chỉ xem)");
+      $("verInfo").textContent = "RemotePC phiên bản " + (m.version||"?");
+      buildMonBar(m.monitors);
+    }else if(m.t==="frame"){
+      frameMeta=m;
+      if(m.cx!=null && !g && Date.now()-lastLocalMove>400) cursorN={x:m.cx,y:m.cy};
+      if(m.same) layout();
+    }else if(m.t==="err"){ toast(m.msg); }
+  };
+}
+
+let lastUrl=null;
+function showFrame(blob){
+  const url = URL.createObjectURL(blob);
+  img.onload = ()=>{
+    if(lastUrl) URL.revokeObjectURL(lastUrl); lastUrl=url;
+    frames++; $("hint").classList.add("hidden");
+    layout(); send({t:"ack"});
+  };
+  img.onerror = ()=>send({t:"ack"});
+  img.src = url;
+}
+
+/* ------------------------------------------------------------ layout & zoom */
+function layout(){
+  const st=$("stage").getBoundingClientRect();
+  const iw = frameMeta? frameMeta.w : (img.naturalWidth||16), ih = frameMeta? frameMeta.h : (img.naturalHeight||9);
+  const fit = Math.min(st.width/iw, st.height/ih);
+  const w = iw*fit*zoom, h = ih*fit*zoom;
+  let left = (st.width-w)/2, top = (st.height-h)/2;
+  if(zoom>1 && cursorN){
+    const cx=cursorN.x*w, cy=cursorN.y*h;
+    if(Date.now()-lastMouse<1500 && view.w===w){ // chuột rời: giữ khung nhìn, chỉ trượt khi con trỏ sát mép
+      left=view.left; top=view.top;
+      const mx=st.width*0.12, my=st.height*0.12;
+      if(left+cx<mx) left=mx-cx; else if(left+cx>st.width-mx) left=st.width-mx-cx;
+      if(top+cy<my) top=my-cy; else if(top+cy>st.height-my) top=st.height-my-cy;
+    }else{ // cảm ứng: luôn để con trỏ ở giữa
+      left = st.width/2 - cx; top = st.height/2 - cy;
+    }
+    left = w>st.width ? Math.min(0, Math.max(st.width-w, left)) : (st.width-w)/2;
+    top  = h>st.height? Math.min(0, Math.max(st.height-h, top)) : (st.height-h)/2;
+  }
+  view={left,top,w};
+  Object.assign(img.style,{left:left+"px",top:top+"px",width:w+"px",height:h+"px"});
+  const c=$("cursor");
+  if(cursorN){ c.classList.remove("hidden"); c.style.left=(left+cursorN.x*w)+"px"; c.style.top=(top+cursorN.y*h)+"px"; }
+}
+addEventListener("resize", layout);
+$("zoomBtn").onclick = ()=>{
+  zoom = zoom>=3?1:zoom+1; $("zoomBtn").textContent=zoom+"x"; layout();
+};
+$("fsBtn").onclick = ()=>{
+  const el=document.documentElement;
+  if(document.fullscreenElement) document.exitFullscreen();
+  else if(el.requestFullscreen) el.requestFullscreen().catch(()=>toast("iPhone: bấm Chia sẻ → Thêm vào MH chính để toàn màn hình"));
+  else toast("iPhone: bấm Chia sẻ → Thêm vào MH chính để toàn màn hình");
+};
+
+/* ------------------------------------------------------------ gestures */
+const stage=$("stage");
+let touches={}, g=null, pend={dx:0,dy:0,sx:0,sy:0}, rafOn=false;
+
+function flush(){
+  rafOn=false;
+  const px=Math.trunc(pend.dx), py=Math.trunc(pend.dy);
+  if(px||py){ send({t:"move",dx:px,dy:py}); pend.dx-=px; pend.dy-=py;
+    lastLocalMove=Date.now();
+    if(cursorN && frameMeta){ cursorN={x:clamp(cursorN.x+px/frameMeta.w),y:clamp(cursorN.y+py/frameMeta.h)}; layout(); } }
+  const ny=Math.trunc(pend.sy), nx=Math.trunc(pend.sx);
+  if(ny||nx){ send({t:"scroll",dx:nx,dy:ny}); pend.sy-=ny; pend.sx-=nx; }
+  if(g && g.pendingMoveTo){ send({t:"moveto",...g.pendingMoveTo}); g.pendingMoveTo=null; }
+}
+function queue(){ if(!rafOn){ rafOn=true; requestAnimationFrame(flush); } }
+const clamp=v=>Math.max(0,Math.min(1,v));
+function norm(x,y){ const r=img.getBoundingClientRect(); return {x:clamp((x-r.left)/r.width), y:clamp((y-r.top)/r.height)}; }
+function scaleFactor(){ const r=img.getBoundingClientRect(); return frameMeta && r.width ? frameMeta.w/r.width : 2; }
+
+stage.addEventListener("touchstart", e=>{
+  e.preventDefault();
+  for(const t of e.changedTouches) touches[t.identifier]={x:t.clientX,y:t.clientY};
+  const n=e.touches.length;
+  if(n===1){
+    const t=e.touches[0];
+    g={n:1,x0:t.clientX,y0:t.clientY,lx:t.clientX,ly:t.clientY,t0:Date.now(),moved:false,drag:false,maxN:1};
+    g.hold=setTimeout(()=>{
+      if(!g || g.moved || g.n!==1) return;
+      g.drag=true; send({t:"down",b:"left"}); navigator.vibrate?.(20);
+    }, 350);
+  }else if(n===2 && g){
+    clearTimeout(g.hold);
+    g.n=2; g.maxN=2;
+    const [a,b]=e.touches; g.lx=(a.clientX+b.clientX)/2; g.ly=(a.clientY+b.clientY)/2;
+  }
+},{passive:false});
+
+stage.addEventListener("touchmove", e=>{
+  e.preventDefault(); if(!g) return;
+  if(g.n===1){
+    const t=e.touches[0];
+    const dx=t.clientX-g.lx, dy=t.clientY-g.ly;
+    if(!g.moved && Math.hypot(t.clientX-g.x0,t.clientY-g.y0)>6){ g.moved=true; clearTimeout(g.hold); }
+    if(g.moved){ // di chuyển tương đối: con trỏ đi theo hướng ngón tay, không nhảy tới chỗ chạm
+      const sp=+$("speed").value*scaleFactor();
+      pend.dx+=dx*sp; pend.dy+=dy*sp; queue();
+    }
+    g.lx=t.clientX; g.ly=t.clientY;
+  }else if(g.n===2 && e.touches.length>=2){
+    const [a,b]=e.touches, mx=(a.clientX+b.clientX)/2, my=(a.clientY+b.clientY)/2;
+    if(Math.hypot(mx-g.lx,my-g.ly)>2) g.moved=true;
+    pend.sy += -(my-g.ly)/18; pend.sx += (mx-g.lx)/18; queue();
+    g.lx=mx; g.ly=my;
+  }
+},{passive:false});
+
+function endTouch(e){
+  e.preventDefault();
+  for(const t of e.changedTouches) delete touches[t.identifier];
+  if(!g || e.touches.length) return;
+  clearTimeout(g.hold);
+  const quick = Date.now()-g.t0 < 300;
+  if(g.drag){ flush(); send({t:"up",b:"left"}); }
+  else if(!g.moved && !g.done){
+    if(g.maxN===2 && quick) send({t:"click",b:"right"});
+    else if(g.maxN===1 && quick) send({t:"click",b:"left"});
+  }
+  g=null;
+}
+stage.addEventListener("touchend", endTouch, {passive:false});
+stage.addEventListener("touchcancel", endTouch, {passive:false});
+
+/* ------------------------------------------------------------ chuột rời (máy tính bảng, laptop) */
+// Con trỏ của máy tính bảng nằm ở đâu trên ảnh thì chuột máy tính ở đó. Hỗ trợ trái/phải/giữa
+// (giữ và kéo được, ví dụ xoay/pan trong SketchUp), con lăn mịn, kéo ngang.
+const BTN=["left","middle","right"], mouseBtns=new Set();
+let mouseMoveTo=null, wheelAcc={x:0,y:0}, mouseRaf=false;
+function mouseFlush(){
+  mouseRaf=false;
+  if(mouseMoveTo){ send({t:"moveto",...mouseMoveTo}); cursorN=mouseMoveTo; lastLocalMove=Date.now(); mouseMoveTo=null; layout(); }
+  const wy=Math.trunc(wheelAcc.y), wx=Math.trunc(wheelAcc.x);
+  if(wy||wx){ send({t:"wheel",dx:wx,dy:wy}); wheelAcc.x-=wx; wheelAcc.y-=wy; }
+}
+function mouseQueue(){ if(!mouseRaf){ mouseRaf=true; requestAnimationFrame(mouseFlush); } }
+stage.addEventListener("pointermove", e=>{
+  if(e.pointerType!=="mouse") return;
+  lastMouse=Date.now(); mouseMoveTo=norm(e.clientX,e.clientY); mouseQueue();
+});
+stage.addEventListener("pointerdown", e=>{
+  if(e.pointerType!=="mouse") return;
+  e.preventDefault(); lastMouse=Date.now();
+  const b=BTN[e.button]; if(!b) return;
+  try{ stage.setPointerCapture(e.pointerId); }catch{}
+  mouseMoveTo=norm(e.clientX,e.clientY); mouseFlush();
+  mouseBtns.add(b); send({t:"down",b});
+});
+function mouseUp(e){
+  if(e.pointerType!=="mouse") return;
+  const b=BTN[e.button];
+  if(b && mouseBtns.has(b)){ mouseFlush(); mouseBtns.delete(b); send({t:"up",b}); }
+  if(e.type==="pointercancel"){ for(const x of mouseBtns) send({t:"up",b:x}); mouseBtns.clear(); }
+}
+stage.addEventListener("pointerup", mouseUp);
+stage.addEventListener("pointercancel", mouseUp);
+stage.addEventListener("contextmenu", e=>e.preventDefault());
+stage.addEventListener("auxclick", e=>e.preventDefault());
+stage.addEventListener("wheel", e=>{
+  e.preventDefault(); lastMouse=Date.now();
+  // đơn vị gửi đi: 1/120 nấc (chuẩn Windows). 1 nấc lăn ≈ 100px trên trình duyệt.
+  const k = e.deltaMode===1 ? 40 : e.deltaMode===2 ? 800 : 1.2;
+  wheelAcc.y += -e.deltaY*k; wheelAcc.x += e.deltaX*k; mouseQueue();
+}, {passive:false});
+
+/* ------------------------------------------------------------ bàn phím rời */
+// Phím bấm trên bàn phím rời (khi không gõ trong ô chữ) được gửi nguyên trạng: giữ Shift + chuột giữa vẫn hoạt động.
+const KEYNAME={Enter:"enter",Escape:"esc",Tab:"tab",Backspace:"backspace",Delete:"delete"," ":"space",
+  ArrowUp:"up",ArrowDown:"down",ArrowLeft:"left",ArrowRight:"right",Home:"home",End:"end",PageUp:"pageup",PageDown:"pagedown",
+  Control:"ctrl",Alt:"alt",Shift:"shift",Meta:"win",CapsLock:"capslock"};
+const heldKeys=new Set();
+function keyName(e){
+  if(KEYNAME[e.key]) return KEYNAME[e.key];
+  if(/^F([1-9]|1[0-2])$/.test(e.key)) return e.key.toLowerCase();
+  if(e.code && /^Key[A-Z]$/.test(e.code)) return e.code.slice(3).toLowerCase();
+  if(e.code && /^Digit[0-9]$/.test(e.code)) return e.code.slice(5);
+  if([...e.key].length===1) return e.key.toLowerCase();
+  return null;
+}
+document.addEventListener("keydown", e=>{
+  if(e.target===typer || e.target===$("pin") || $("main").classList.contains("hidden")) return;
+  const k=keyName(e); if(!k) return;
+  e.preventDefault(); heldKeys.add(k); send({t:"kdown",k});
+});
+document.addEventListener("keyup", e=>{
+  if(e.target===typer || e.target===$("pin")) return;
+  const k=keyName(e); if(!k || !heldKeys.has(k)) return;
+  e.preventDefault(); heldKeys.delete(k); send({t:"kup",k});
+});
+addEventListener("blur", ()=>{ for(const k of heldKeys) send({t:"kup",k}); heldKeys.clear(); });
+
+/* ------------------------------------------------------------ bottom bar */
+/* giữ chuột giữa / Ctrl / Shift / Alt: bấm 1 lần để giữ, bấm lại để thả */
+const heldBtns=new Set(), heldMods=new Set();
+document.querySelectorAll("[data-hold-btn]").forEach(b=>b.onclick=()=>{
+  const k=b.dataset.holdBtn, on=!heldBtns.has(k);
+  on?heldBtns.add(k):heldBtns.delete(k); send({t:on?"down":"up",b:k}); b.classList.toggle("on",on);
+  if(on) toast("Đang giữ chuột giữa: kéo 1 ngón để xoay/kéo, bấm lại để thả");
+});
+document.querySelectorAll("[data-hold-key]").forEach(b=>b.onclick=()=>{
+  const k=b.dataset.holdKey, on=!heldMods.has(k);
+  on?heldMods.add(k):heldMods.delete(k); send({t:on?"kdown":"kup",k}); b.classList.toggle("on",on);
+});
+function releaseHeld(){
+  for(const k of heldBtns) send({t:"up",b:k});
+  for(const k of heldMods) send({t:"kup",k});
+  heldBtns.clear(); heldMods.clear();
+  document.querySelectorAll("[data-hold-btn],[data-hold-key]").forEach(b=>b.classList.remove("on"));
+}
+document.addEventListener("visibilitychange",()=>{ if(document.hidden) releaseHeld(); });
+let holding=false;
+$("holdBtn").onclick = ()=>{
+  holding=!holding; send({t:holding?"down":"up",b:"left"});
+  $("holdBtn").classList.toggle("on",holding);
+  toast(holding?"Đang giữ chuột trái: kéo để kéo thả, bấm lại để thả":"Đã thả chuột");
+};
+$("lBtn").onclick = ()=>send({t:"click",b:"left"});
+$("rBtn").onclick = ()=>send({t:"click",b:"right"});
+document.querySelectorAll("[data-sheet]").forEach(b=>b.onclick=()=>{
+  const id=b.dataset.sheet, open=$(id).classList.contains("hidden");
+  document.querySelectorAll(".sheet").forEach(s=>s.classList.add("hidden"));
+  document.querySelectorAll("[data-sheet]").forEach(x=>x.classList.remove("on"));
+  if(open){ $(id).classList.remove("hidden"); b.classList.add("on"); if(id==="kbSheet") $("typer").focus(); }
+  setTimeout(layout,50);
+});
+
+/* ------------------------------------------------------------ keyboard */
+const mods=new Set();
+const modKey = ()=> info && info.os==="Darwin" ? "cmd" : "ctrl";
+document.querySelectorAll("[data-mod]").forEach(b=>b.onclick=()=>{
+  const m=b.dataset.mod; mods.has(m)?mods.delete(m):mods.add(m); b.classList.toggle("on",mods.has(m)); $("typer").focus();
+});
+function clearMods(){ mods.clear(); document.querySelectorAll("[data-mod]").forEach(b=>b.classList.remove("on")); }
+function sendKey(k){
+  if(mods.size){ send({t:"combo",k:[...mods,k]}); clearMods(); } else send({t:"key",k});
+}
+document.querySelectorAll("[data-key]").forEach(b=>b.onclick=()=>sendKey(b.dataset.key));
+document.querySelectorAll("[data-combo]").forEach(b=>b.onclick=()=>send({t:"combo",k:b.dataset.combo.split("+").map(k=>k==="mod"?modKey():k)}));
+
+// Gõ trực tiếp: giữ một chuỗi "mồi" trong ô, so sánh để biết người dùng gõ thêm hay xoá.
+const SENT="  ", typer=$("typer");
+let composing=false;
+function resetTyper(){ typer.value=SENT; try{ typer.setSelectionRange(SENT.length,SENT.length);}catch{} }
+function diffTyper(){
+  const v=typer.value;
+  if(v.startsWith(SENT)){
+    const s=v.slice(SENT.length);
+    if(s){
+      if(mods.size && s.length===1) sendKey(s.toLowerCase());
+      else send({t:"text",s});
+    }
+  }else if(v.length<SENT.length){
+    for(let i=0;i<SENT.length-v.length;i++) send({t:"key",k:"backspace"});
+  }else send({t:"text",s:v.replace(/ /g,"")});
+  resetTyper();
+}
+typer.addEventListener("focus", resetTyper);
+typer.addEventListener("compositionstart", ()=>composing=true);
+typer.addEventListener("compositionend", ()=>{ composing=false; diffTyper(); });
+typer.addEventListener("input", ()=>{ if(!composing) diffTyper(); });
+typer.addEventListener("keydown", e=>{
+  if(e.key==="Enter"){ e.preventDefault(); sendKey("enter"); }
+  else if(e.key==="Tab"){ e.preventDefault(); sendKey("tab"); }
+});
+resetTyper();
+
+/* ------------------------------------------------------------ âm thanh */
+// Nhận PCM 16-bit mono 24 kHz từ /audio rồi phát bằng Web Audio, giữ độ trễ dưới ~0,4 s.
+let actx=null, aws=null, aNext=0, aRate=24000, audioOn=false, aRetry=null;
+function audioStart(){
+  audioOn=true; $("audioBtn").textContent="🔊"; $("audioBtn").classList.add("on");
+  if(!actx){ const AC=window.AudioContext||window.webkitAudioContext; actx=new AC(); }
+  actx.resume();
+  // iOS: phát 1 mẫu rỗng ngay trong lần bấm để "mở khoá" âm thanh
+  const b=actx.createBuffer(1,1,22050), s=actx.createBufferSource(); s.buffer=b; s.connect(actx.destination); s.start(0);
+  const proto=location.protocol==="https:"?"wss":"ws";
+  aws=new WebSocket(`${proto}://${location.host}/audio?token=${encodeURIComponent(store.get("token")||"")}`);
+  aws.binaryType="arraybuffer";
+  aws.onmessage=ev=>{
+    if(typeof ev.data==="string"){ const m=JSON.parse(ev.data); if(m.t==="audio") aRate=m.rate; else if(m.t==="err"){ toast(m.msg); audioStop(); } return; }
+    const pcm=new Int16Array(ev.data), n=pcm.length; if(!n) return;
+    const buf=actx.createBuffer(1,n,aRate), ch=buf.getChannelData(0);
+    for(let i=0;i<n;i++) ch[i]=pcm[i]/32768;
+    const now=actx.currentTime;
+    if(aNext<now+0.05 || aNext>now+0.4) aNext=now+0.1; // đệm ít, bỏ phần trễ
+    const src=actx.createBufferSource(); src.buffer=buf; src.connect(actx.destination); src.start(aNext);
+    aNext+=n/aRate;
+  };
+  aws.onclose=()=>{ if(audioOn){ clearTimeout(aRetry); aRetry=setTimeout(()=>{ if(audioOn) audioStart(); },2000); } };
+}
+function audioStop(){
+  audioOn=false; clearTimeout(aRetry); $("audioBtn").textContent="🔇"; $("audioBtn").classList.remove("on");
+  if(aws){ aws.onclose=null; aws.close(); aws=null; }
+}
+$("audioBtn").onclick=()=>{ audioOn?audioStop():(audioStart(), toast("Đang nghe âm thanh máy tính. iPhone: tắt chế độ im lặng nếu không nghe thấy")); };
+
+/* ------------------------------------------------------------ settings */
+function applyQuality(){
+  const [max_w,q,fps]=$("qSel").value.split(",").map(Number);
+  send({t:"cfg",max_w,q,fps});
+}
+const savedQ=store.get("q"); if(savedQ) $("qSel").value=savedQ;
+$("qSel").onchange=()=>{ store.set("q",$("qSel").value); applyQuality(); };
+const savedSpeed=store.get("speed"); if(savedSpeed) $("speed").value=savedSpeed;
+$("speed").onchange=()=>store.set("speed",$("speed").value);
+$("streamBtn").onclick=()=>{
+  streaming=!streaming; send({t:"cfg",stream:streaming});
+  $("streamBtn").classList.toggle("on",streaming); $("streamBtn").textContent=streaming?"Đang bật":"Đã tắt (tiết kiệm pin)";
+  if(!streaming){ $("hint").textContent="Đã tắt hình, chuột/bàn phím vẫn hoạt động"; $("hint").classList.remove("hidden"); }
+};
+$("unpairBtn").onclick=()=>{ if(confirm("Huỷ ghép nối với máy tính này?")){ store.del("token"); location.reload(); } };
+
+boot();
+</script>
+</body>
+</html>
