@@ -75,6 +75,7 @@ function render(){
   });
 }
 window.onScanned=text=>connect(text);
+window.onScanError=msg=>{ $("err").textContent=msg; $("err").hidden=false; };
 $("scanBtn").onclick=()=>app.scan();
 $("addBtn").onclick=()=>{ $("addBox").hidden=false; $("addr").focus(); };
 $("addCancel").onclick=()=>{ $("addBox").hidden=true; };

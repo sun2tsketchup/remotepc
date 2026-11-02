@@ -1,5 +1,8 @@
 # Lịch sử phiên bản RemotePC
 
+## v0.5.2 (02/11/2026)
+- App Android: sửa lỗi bấm "Quét mã QR" bị văng app. Chuyển sang trình quét QR của Google, không cần cấp quyền camera; nếu máy không hỗ trợ thì báo lỗi trong app thay vì văng.
+
 ## v0.5.1 (02/11/2026)
 - App Android ký bằng khoá riêng của bạn: từ bản này trở đi cài APK mới đè lên bản cũ được (riêng lần chuyển từ v0.5.0 cần gỡ app cũ 1 lần).
 - GitHub tự build file exe và APK mỗi lần cập nhật, tải ở trang Releases.

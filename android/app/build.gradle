@@ -40,5 +40,6 @@ android {
 }
 
 dependencies {
-    implementation 'com.journeyapps:zxing-android-embedded:4.3.0'
+    // Bộ quét QR của Google Play Services: giao diện quét do Google cung cấp, không cần xin quyền camera.
+    implementation 'com.google.android.gms:play-services-code-scanner:16.1.0'
 }

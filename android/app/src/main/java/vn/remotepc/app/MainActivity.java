@@ -20,8 +20,10 @@ import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 
-import com.google.zxing.integration.android.IntentIntegrator;
-import com.google.zxing.integration.android.IntentResult;
+import com.google.mlkit.vision.barcode.common.Barcode;
+import com.google.mlkit.vision.codescanner.GmsBarcodeScanner;
+import com.google.mlkit.vision.codescanner.GmsBarcodeScannerOptions;
+import com.google.mlkit.vision.codescanner.GmsBarcodeScanning;
 
 /**
  * App RemotePC cho Android: màn hình danh sách máy tính (assets/launcher.html) và WebView
@@ -119,18 +121,13 @@ public class MainActivity extends Activity {
         }
     }
 
-    @Override
-    protected void onActivityResult(int req, int res, Intent data) {
-        IntentResult r = IntentIntegrator.parseActivityResult(req, res, data);
-        if (r != null) {
-            String text = r.getContents();
-            if (text != null) {
-                String js = "window.onScanned && window.onScanned(" + org.json.JSONObject.quote(text) + ")";
-                web.evaluateJavascript(js, null);
-            }
-            return;
-        }
-        super.onActivityResult(req, res, data);
+    private void sendScan(String text) {
+        if (text == null) return;
+        web.evaluateJavascript("window.onScanned && window.onScanned(" + org.json.JSONObject.quote(text) + ")", null);
+    }
+
+    private void scanError(String msg) {
+        web.evaluateJavascript("window.onScanError && window.onScanError(" + org.json.JSONObject.quote(msg) + ")", null);
     }
 
     /** Hàm cho trang launcher.html gọi qua window.RemotePCApp. */
@@ -153,12 +150,18 @@ public class MainActivity extends Activity {
         @JavascriptInterface
         public void scan() {
             runOnUiThread(() -> {
-                IntentIntegrator ii = new IntentIntegrator(MainActivity.this);
-                ii.setDesiredBarcodeFormats(IntentIntegrator.QR_CODE);
-                ii.setPrompt("Quét mã QR trên cửa sổ RemotePC của máy tính");
-                ii.setBeepEnabled(false);
-                ii.setOrientationLocked(false);
-                ii.initiateScan();
+                try {
+                    GmsBarcodeScannerOptions opts = new GmsBarcodeScannerOptions.Builder()
+                            .setBarcodeFormats(Barcode.FORMAT_QR_CODE)
+                            .build();
+                    GmsBarcodeScanner scanner = GmsBarcodeScanning.getClient(MainActivity.this, opts);
+                    scanner.startScan()
+                            .addOnSuccessListener(b -> sendScan(b.getRawValue()))
+                            .addOnFailureListener(e -> scanError("Không mở được trình quét QR (" + e.getMessage()
+                                    + "). Hãy dùng \"Nhập địa chỉ\" thay thế."));
+                } catch (Throwable t) {
+                    scanError("Máy này không hỗ trợ quét QR trong app. Hãy dùng \"Nhập địa chỉ\".");
+                }
             });
         }
 

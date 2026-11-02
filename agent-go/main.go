@@ -405,7 +405,7 @@ type App struct {
 func (a *App) QRURL() string { return fmt.Sprintf("%s/?pin=%s", a.URLs[0], a.Auth.PIN()) }
 
 // Version: tăng mỗi lần phát hành, xem CHANGELOG.md.
-var Version = "0.5.1"
+var Version = "0.5.2"
 
 var activeConns atomic.Int32
 
