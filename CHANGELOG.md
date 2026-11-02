@@ -1,5 +1,9 @@
 # Lịch sử phiên bản RemotePC
 
+## v0.5.1 (02/11/2026)
+- App Android ký bằng khoá riêng của bạn: từ bản này trở đi cài APK mới đè lên bản cũ được (riêng lần chuyển từ v0.5.0 cần gỡ app cũ 1 lần).
+- GitHub tự build file exe và APK mỗi lần cập nhật, tải ở trang Releases.
+
 ## v0.5.0 (02/11/2026)
 - Tuỳ chọn "Tự chạy ngầm khi bật Windows": bật máy là RemotePC chạy luôn, không hiện cửa sổ.
 - Đóng cửa sổ thì RemotePC vẫn chạy ngầm, có biểu tượng ở khay đồng hồ (bấm để mở lại, chuột phải để thoát hẳn).
