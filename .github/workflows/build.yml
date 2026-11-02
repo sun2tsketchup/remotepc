@@ -61,18 +61,26 @@ jobs:
           name: RemotePC-android
           path: RemotePC-v*.apk
 
+  # Mỗi lần đẩy lên main: tạo/cập nhật bản phát hành v<phiên bản> kèm file exe và apk để tải.
   release:
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
     needs: [windows-exe, android-apk]
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
+      - uses: actions/checkout@v4
+      - name: Lấy số phiên bản
+        id: ver
+        run: echo "ver=$(grep -oP 'var Version = "\K[^"]+' agent-go/main.go)" >> "$GITHUB_OUTPUT"
       - uses: actions/download-artifact@v4
         with:
           merge-multiple: true
       - uses: softprops/action-gh-release@v2
         with:
+          tag_name: v${{ steps.ver.outputs.ver }}
+          name: RemotePC v${{ steps.ver.outputs.ver }}
+          body: "Tải RemotePC-v${{ steps.ver.outputs.ver }}.exe cho máy tính Windows và RemotePC-v${{ steps.ver.outputs.ver }}.apk cho điện thoại Android. Xem CHANGELOG.md."
           files: |
             RemotePC-v*.exe
             RemotePC-v*.apk
