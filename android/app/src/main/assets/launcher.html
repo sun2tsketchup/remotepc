@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>RemotePC</title>
+<title>Betagon Remote PC</title>
 <style>
 :root{--bg:#0b1220;--panel:#121b2e;--line:#22304d;--text:#e6edf7;--mute:#8a9bb8;--acc:#38bdf8;--bad:#f87171}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -26,26 +26,42 @@ input{width:100%;font:inherit;padding:12px;border-radius:10px;border:1px solid v
 </style>
 </head>
 <body>
-<h1>🖥️ RemotePC</h1>
+<div style="display:flex;align-items:center;gap:10px"><h1 style="flex:1">🖥️ Betagon Remote PC</h1><button id="langBtn" style="min-height:36px;padding:6px 12px"></button></div>
 <div class="ver" id="ver"></div>
 <div id="err" class="err" hidden></div>
 
 <div class="list" id="list"></div>
 
 <div class="row">
-  <button class="pri" id="scanBtn">📷 Quét mã QR</button>
-  <button id="addBtn">⌨️ Nhập địa chỉ</button>
+  <button class="pri" id="scanBtn" data-t="📷 Quét mã QR"></button>
+  <button id="addBtn" data-t="⌨️ Nhập địa chỉ"></button>
 </div>
 <div id="addBox" hidden>
-  <input id="addr" placeholder="Ví dụ: 192.168.1.10:8765 hoặc link https://…" autocapitalize="off" autocorrect="off" inputmode="url">
-  <div class="row"><button class="pri" id="addOk">Kết nối</button><button id="addCancel">Huỷ</button></div>
+  <input id="addr" data-tp="Ví dụ: 192.168.1.10:8765 hoặc link https://…" autocapitalize="off" autocorrect="off" inputmode="url">
+  <div class="row"><button class="pri" id="addOk" data-t="Kết nối"></button><button id="addCancel" data-t="Huỷ"></button></div>
 </div>
-<p class="ver">Mở RemotePC trên máy tính, rồi quét mã QR hiện trên cửa sổ. Máy đã ghép nối sẽ được lưu lại ở đây.</p>
+<p class="ver" data-t="Mở Betagon Remote PC trên máy tính, rồi quét mã QR hiện trên cửa sổ. Máy đã ghép nối sẽ được lưu lại ở đây."></p>
 
 <script>
 "use strict";
 const $=id=>document.getElementById(id);
 const app=window.RemotePCApp;
+const EN={
+  "📷 Quét mã QR":"📷 Scan QR code","⌨️ Nhập địa chỉ":"⌨️ Enter address","Kết nối":"Connect","Huỷ":"Cancel","Mở":"Open",
+  "Ví dụ: 192.168.1.10:8765 hoặc link https://…":"e.g. 192.168.1.10:8765 or an https://… link",
+  "Mở Betagon Remote PC trên máy tính, rồi quét mã QR hiện trên cửa sổ. Máy đã ghép nối sẽ được lưu lại ở đây.":"Open Betagon Remote PC on your computer, then scan the QR code in its window. Paired computers are saved here.",
+  "Chưa có máy tính nào":"No computers yet","Địa chỉ không hợp lệ":"Invalid address","Xoá ":"Remove ","khỏi danh sách?":"from the list?",
+  "Phiên bản app ":"App version ","Không kết nối được tới máy tính. Kiểm tra Betagon Remote PC đang chạy và cùng mạng.":"Cannot reach the computer. Check that Betagon Remote PC is running and on the same network.",
+  "Máy này không hỗ trợ quét QR trong app. Hãy dùng \"Nhập địa chỉ\".":"This phone cannot scan QR codes in the app. Use \"Enter address\" instead.",
+};
+let LANG=(app.getLang&&app.getLang())||"vi";
+function T(x){ return LANG==="en" ? (EN[x]??x) : x; }
+function applyLang(){
+  document.querySelectorAll("[data-t]").forEach(el=>el.textContent=T(el.dataset.t));
+  document.querySelectorAll("[data-tp]").forEach(el=>el.placeholder=T(el.dataset.tp));
+  $("langBtn").textContent = LANG==="en" ? "Tiếng Việt" : "English";
+  document.documentElement.lang=LANG;
+}
 function load(){ try{ return JSON.parse(app.getPcs()) }catch{ return [] } }
 function save(l){ app.savePcs(JSON.stringify(l)); render(); }
 function parse(text){
@@ -56,33 +72,36 @@ function parse(text){
   return {origin:u.origin, full:u.origin+"/"+u.search};
 }
 function connect(text){
-  const p=parse(text); if(!p){ alert("Địa chỉ không hợp lệ"); return; }
+  const p=parse(text); if(!p){ alert(T("Địa chỉ không hợp lệ")); return; }
   const l=load().filter(x=>x.url!==p.origin);
   l.unshift({url:p.origin,name:p.origin.replace(/^https?:\/\//,""),t:Date.now()});
   save(l.slice(0,20));
-  app.open(p.full);
+  const u=new URL(p.full); u.searchParams.set("lang",LANG); // app điều khiển dùng cùng ngôn ngữ
+  app.open(u.toString());
 }
 function render(){
   const l=load(), box=$("list"); box.innerHTML="";
-  if(!l.length){ box.innerHTML='<div class="empty">Chưa có máy tính nào</div>'; return; }
+  if(!l.length){ box.innerHTML='<div class="empty">'+T("Chưa có máy tính nào")+'</div>'; return; }
   l.forEach((pc,i)=>{
     const d=document.createElement("div"); d.className="pc";
-    d.innerHTML='<div class="info"><b></b><span></span></div><button class="pri">Mở</button><button class="del">✕</button>';
+    d.innerHTML='<div class="info"><b></b><span></span></div><button class="pri">'+T("Mở")+'</button><button class="del">✕</button>';
     d.querySelector("b").textContent=pc.name; d.querySelector("span").textContent=pc.url;
     d.querySelector(".pri").onclick=()=>connect(pc.url);
-    d.querySelector(".del").onclick=()=>{ if(confirm("Xoá "+pc.name+" khỏi danh sách?")){ const x=load(); x.splice(i,1); save(x);} };
+    d.querySelector(".del").onclick=()=>{ if(confirm(T("Xoá ")+pc.name+" "+T("khỏi danh sách?"))){ const x=load(); x.splice(i,1); save(x);} };
     box.appendChild(d);
   });
 }
 window.onScanned=text=>connect(text);
-window.onScanError=msg=>{ $("err").textContent=msg; $("err").hidden=false; };
+window.onScanError=msg=>{ $("err").textContent=T(msg); $("err").hidden=false; };
 $("scanBtn").onclick=()=>app.scan();
 $("addBtn").onclick=()=>{ $("addBox").hidden=false; $("addr").focus(); };
 $("addCancel").onclick=()=>{ $("addBox").hidden=true; };
 $("addOk").onclick=()=>connect($("addr").value);
-$("ver").textContent="Phiên bản app "+app.version();
+$("ver").textContent=T("Phiên bản app ")+app.version();
+$("langBtn").onclick=()=>{ LANG = LANG==="en"?"vi":"en"; app.setLang&&app.setLang(LANG); applyLang(); render(); $("ver").textContent=T("Phiên bản app ")+app.version(); };
+applyLang();
 const m=location.hash.match(/err=([^&]+)/);
-if(m){ $("err").textContent=decodeURIComponent(m[1]); $("err").hidden=false; }
+if(m){ $("err").textContent=T(decodeURIComponent(m[1])); $("err").hidden=false; }
 render();
 </script>
 </body>

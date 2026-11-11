@@ -1,4 +1,4 @@
-# RemotePC: dùng điện thoại điều khiển máy tính (bản MVP)
+# Betagon Remote PC: dùng điện thoại điều khiển máy tính (bản MVP)
 
 ## Ý tưởng
 
@@ -18,6 +18,8 @@ Vì sao chọn cách này cho bản đầu: một bộ code chạy được cả
 
 ## Tính năng
 
+- **Hai ngôn ngữ**: tiếng Việt (mặc định) và tiếng Anh. Trên máy tính bấm nút "English" ở góc trên cửa sổ; trên điện thoại chọn trong ⚙️ → Ngôn ngữ; app Android có nút ở màn hình danh sách máy tính.
+
 - **Xem màn hình trực tiếp**, có mũi tên chuột hiện trên điện thoại, nút **MH1 / MH2 / Tất cả** ở thanh trên cùng để chuyển màn hình hoặc xem mọi màn hình cùng lúc, 3 mức chất lượng (Tiết kiệm / Vừa / Nét). Hình chỉ gửi khi có thay đổi, và điện thoại xác nhận từng khung nên không bị trễ dồn.
 - **Điều khiển kiểu touchpad**: chạm ở đâu cũng được, con trỏ không nhảy tới ngón tay mà đi theo hướng kéo (đúng bằng quãng ngón tay di, chỉnh tốc độ trong ⚙️) nên ngón tay không che con trỏ. Chạm = click trái, chạm 2 ngón = click phải, kéo 2 ngón = cuộn, giữ 1 ngón rồi kéo = kéo thả, nút **Giữ chuột** để kéo thả dài. Nút **1x/2x/3x** phóng to và tự bám theo con trỏ.
 - **Chuột và bàn phím rời** (máy tính bảng, laptop): trỏ tới đâu chuột máy tính tới đó, đủ trái/phải/giữa, giữ và kéo (xoay/pan trong SketchUp), con lăn mịn. Bàn phím rời gửi thẳng từng phím, giữ Shift/Ctrl được. Muốn gõ tiếng Việt bằng bàn phím rời: để bàn phím máy tính bảng ở chế độ tiếng Anh và bật Unikey/EVKey trên máy tính.
@@ -33,11 +35,11 @@ Vì sao chọn cách này cho bản đầu: một bộ code chạy được cả
 
 ### 1. Trên máy tính
 
-**Windows (cách nhanh nhất, không cần cài gì):** bấm đúp `RemotePC-v0.5.0.exe` (số sau chữ v là phiên bản, xem `CHANGELOG.md`). Cửa sổ phần mềm RemotePC hiện mã QR, mã PIN và địa chỉ.
+**Windows (cách nhanh nhất, không cần cài gì):** bấm đúp `BetagonRemotePC-v0.6.0.exe` (số sau chữ v là phiên bản, xem `CHANGELOG.md`). Cửa sổ phần mềm Betagon Remote PC hiện mã QR, mã PIN và địa chỉ.
 - Lần đầu Windows có thể hiện "Windows protected your PC" (vì file chưa ký số): bấm **More info → Run anyway**.
 - Khi Windows Firewall hỏi, chọn **Allow** (mạng Private).
-- Nút **Cùng Wi-Fi / Qua Internet**: chọn "Qua Internet" để điều khiển từ 4G hay mạng khác. RemotePC tự tải thành phần kết nối của Cloudflare (lần đầu, khoảng 50 MB) và tạo link https riêng. Link này đổi mỗi lần bật lại.
-- Tick **Tự chạy ngầm khi bật Windows** để bật máy là RemotePC chạy sẵn. Đóng cửa sổ thì RemotePC vẫn chạy ngầm ở khay đồng hồ (bấm biểu tượng để mở lại, chuột phải → Thoát hẳn). **Giữ máy tính không ngủ** bật sẵn để điện thoại vào lúc nào cũng được.
+- Nút **Cùng Wi-Fi / Qua Internet**: chọn "Qua Internet" để điều khiển từ 4G hay mạng khác. Betagon Remote PC tự tải thành phần kết nối của Cloudflare (lần đầu, khoảng 50 MB) và tạo link https riêng. Link này đổi mỗi lần bật lại.
+- Tick **Tự chạy ngầm khi bật Windows** để bật máy là Betagon Remote PC chạy sẵn. Đóng cửa sổ thì Betagon Remote PC vẫn chạy ngầm ở khay đồng hồ (bấm biểu tượng để mở lại, chuột phải → Thoát hẳn). **Giữ máy tính không ngủ** bật sẵn để điện thoại vào lúc nào cũng được.
 - Nút **Đổi mã PIN**, **Huỷ ghép nối** (bắt mọi điện thoại nhập lại PIN), **Thoát hẳn**.
 - Mã nguồn bản .exe nằm ở `agent-go/` (viết bằng Go), build lại bằng `agent-go/build.sh`.
 
@@ -64,7 +66,7 @@ Tuỳ chọn: `--port 9000` để đổi cổng, `--reset` để xoá mọi đi�
 
 | File | Vai trò |
 |---|---|
-| `RemotePC-v*.exe` + `agent-go/` | Bản Windows 1 file, viết bằng Go (không cần Python) |
+| `BetagonRemotePC-v*.exe` + `agent-go/` | Bản Windows 1 file, viết bằng Go (không cần Python) |
 | `agent/server.py` | Server aiohttp: ghép nối, WebSocket, chụp màn hình, điều khiển chuột/phím |
 | `agent/web/index.html` | Toàn bộ app điện thoại (HTML + CSS + JS, không cần build) |
 | `agent/web/manifest.json` | Cho phép cài như app (PWA) |

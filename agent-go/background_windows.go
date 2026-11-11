@@ -36,14 +36,16 @@ const (
 	wmTray     = wmApp + 1 // tin nhắn từ biểu tượng khay
 	wmShowMain = wmApp + 2 // bản thứ hai nhờ bản đang chạy hiện cửa sổ
 	runKey     = `Software\Microsoft\Windows\CurrentVersion\Run`
-	runName    = "RemotePC"
+	runName    = "BetagonRemotePC"
+	oldRunName = "RemotePC" // tên cũ trước v0.6.0
 )
 
 // ---------------------------------------------------------------- settings --
 type Settings struct {
-	NoSleep  bool `json:"no_sleep"`
-	Internet bool `json:"internet"`
-	Hinted   bool `json:"tray_hinted"`
+	NoSleep  bool   `json:"no_sleep"`
+	Internet bool   `json:"internet"`
+	Hinted   bool   `json:"tray_hinted"`
+	Lang     string `json:"lang"` // "vi" (mặc định) hoặc "en"
 }
 
 func settingsPath() string {
@@ -108,6 +110,10 @@ func refreshAutostartPath() {
 		return
 	}
 	defer k.Close()
+	if v, _, err := k.GetStringValue(oldRunName); err == nil && v != "" { // chuyển tên cũ sang tên mới
+		k.DeleteValue(oldRunName)
+		k.SetStringValue(runName, autostartCmd())
+	}
 	if v, _, err := k.GetStringValue(runName); err == nil && v != "" && !strings.EqualFold(v, autostartCmd()) {
 		k.SetStringValue(runName, autostartCmd())
 	}
@@ -126,6 +132,7 @@ func applyNoSleep(on bool) {
 // ---------------------------------------------------------- single instance --
 // ensureSingleInstance: nếu RemotePC đang chạy rồi thì hiện cửa sổ của nó và thoát bản này.
 func ensureSingleInstance() {
+	setLang(loadSettings().Lang) // ngôn ngữ cần có sớm, trước cả hộp thoại lỗi
 	h, _, err := pCreateMutexW.Call(0, 0, uintptr(unsafe.Pointer(wstr("Local\\RemotePC_SingleInstance"))))
 	if h != 0 && err == windows.ERROR_ALREADY_EXISTS {
 		if w, _, _ := pFindWindowW.Call(uintptr(unsafe.Pointer(wstr("RemotePCWindow"))), 0); w != 0 {
@@ -166,7 +173,7 @@ func copyW(dst []uint16, s string) {
 func trayData(hwnd, icon uintptr) notifyIconData {
 	d := notifyIconData{hwnd: hwnd, id: 1, flags: 0x1 | 0x2 | 0x4, callbackMsg: wmTray, icon: icon}
 	d.size = uint32(unsafe.Sizeof(d))
-	copyW(d.tip[:], "RemotePC v"+Version+" đang chạy ngầm")
+	copyW(d.tip[:], "Betagon Remote PC v"+Version+tr(" đang chạy ngầm"))
 	return d
 }
 
@@ -195,9 +202,9 @@ func trayBalloon(hwnd, icon uintptr, title, text string) {
 // trayMenu hiện menu chuột phải, trả về mã lệnh đã chọn.
 func trayMenu(hwnd uintptr) int {
 	m, _, _ := pCreatePopupMenu.Call()
-	pAppendMenuW.Call(m, 0, 1, uintptr(unsafe.Pointer(wstr("Mở RemotePC"))))
+	pAppendMenuW.Call(m, 0, 1, uintptr(unsafe.Pointer(wstr(tr("Mở Betagon Remote PC")))))
 	pAppendMenuW.Call(m, 0x800, 0, 0) // MF_SEPARATOR
-	pAppendMenuW.Call(m, 0, 2, uintptr(unsafe.Pointer(wstr("Thoát hẳn RemotePC"))))
+	pAppendMenuW.Call(m, 0, 2, uintptr(unsafe.Pointer(wstr(tr("Thoát hẳn Betagon Remote PC")))))
 	var pt struct{ X, Y int32 }
 	pGetCursorPos.Call(uintptr(unsafe.Pointer(&pt)))
 	pSetForegroundWindow.Call(hwnd)

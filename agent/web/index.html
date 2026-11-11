@@ -9,7 +9,7 @@
 <meta name="theme-color" content="#0b1220">
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icon-192.png">
-<title>RemotePC</title>
+<title>Betagon Remote PC</title>
 <style>
 :root{--bg:#0b1220;--panel:#121b2e;--line:#22304d;--text:#e6edf7;--mute:#8a9bb8;--acc:#38bdf8;--bad:#f87171;--ok:#4ade80}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -60,8 +60,8 @@ select{font:inherit;background:var(--bg);color:var(--text);border:1px solid var(
 <body>
 
 <section id="pair">
-  <h1>🖥️ RemotePC</h1>
-  <p>Nhập mã PIN 6 số đang hiện trên cửa sổ RemotePC của máy tính.</p>
+  <h1>🖥️ Betagon Remote PC</h1>
+  <p>Nhập mã PIN 6 số đang hiện trên cửa sổ Betagon Remote PC của máy tính.</p>
   <input id="pin" inputmode="numeric" maxlength="6" autocomplete="one-time-code" placeholder="••••••">
   <button id="pairBtn">Kết nối</button>
   <div id="pairErr"></div>
@@ -102,6 +102,8 @@ select{font:inherit;background:var(--bg);color:var(--text);border:1px solid var(
   </div>
 
   <div id="setSheet" class="sheet hidden">
+    <div class="row"><label>Ngôn ngữ</label>
+      <select id="langSel"><option value="vi">Tiếng Việt</option><option value="en">English</option></select></div>
     <div class="row"><label>Chất lượng</label>
       <select id="qSel">
         <option value="800,45,10">Tiết kiệm</option>
@@ -151,7 +153,55 @@ const store = {
   set(k,v){ try { localStorage.setItem(k,v) } catch {} },
   del(k){ try { localStorage.removeItem(k) } catch {} },
 };
-function toast(msg){ const t=$("toast"); t.textContent=msg; t.classList.add("show"); clearTimeout(toast.h); toast.h=setTimeout(()=>t.classList.remove("show"),1800); }
+/* ------------------------------------------------------------ ngôn ngữ (mặc định tiếng Việt) */
+const I18N_EN = {
+  "Nhập mã PIN 6 số đang hiện trên cửa sổ Betagon Remote PC của máy tính.":"Enter the 6-digit PIN shown in the Betagon Remote PC window on your computer.",
+  "Kết nối":"Connect", "Đang kết nối…":"Connecting…", "Đang chờ hình ảnh…":"Waiting for the screen…",
+  "Chạm vào đây và gõ, chữ sẽ gửi sang máy tính":"Tap here and type; text is sent to the computer",
+  "Nghe âm thanh máy tính":"Listen to computer audio",
+  "Chọn hết":"Select all", "Đóng cửa sổ":"Close window", "Giữ chuột":"Hold mouse", "Giữ chuột giữa":"Hold middle button",
+  "Lưu":"Save", "Trái":"Left", "Phải":"Right", "Ngôn ngữ":"Language", "Màn hình":"Screen",
+  "Chất lượng":"Quality", "Tiết kiệm":"Low", "Vừa":"Medium", "Nét":"High", "Tốc độ chuột":"Mouse speed",
+  "Truyền hình":"Video", "Đang bật":"On", "Đã tắt (tiết kiệm pin)":"Off (saves battery)",
+  "Huỷ ghép nối máy này":"Unpair this computer", "Huỷ ghép nối với máy tính này?":"Unpair from this computer?",
+  "Lỗi ghép nối":"Pairing failed", "Mã PIN không đúng":"Wrong PIN", "Sai quá nhiều lần, thử lại sau":"Too many attempts, try again in",
+  "giây":"seconds", "Mất kết nối, đang thử lại…":"Disconnected, retrying…", " (chỉ xem)":" (view only)",
+  "Phiên bản":"Version", "Tất cả":"All", "MH":"S",
+  "iPhone: bấm Chia sẻ → Thêm vào MH chính để toàn màn hình":"iPhone: tap Share → Add to Home Screen for full screen",
+  "Đang giữ chuột giữa: kéo 1 ngón để xoay/kéo, bấm lại để thả":"Holding middle button: drag one finger to orbit/pan, tap again to release",
+  "Đang giữ chuột trái: kéo để kéo thả, bấm lại để thả":"Holding left button: drag to move things, tap again to release",
+  "Đã thả chuột":"Mouse released",
+  "Đang nghe âm thanh máy tính. iPhone: tắt chế độ im lặng nếu không nghe thấy":"Playing computer audio. iPhone: turn off silent mode if you hear nothing",
+  "Đã tắt hình, chuột/bàn phím vẫn hoạt động":"Video off; mouse and keyboard still work",
+  "phím không hỗ trợ":"unsupported key", "Không lấy được âm thanh":"Cannot capture audio", "không có loa mặc định":"no default speaker",
+  "chỉ hỗ trợ trên Windows":"Windows only", "token không hợp lệ":"invalid token",
+  "Chạm ở đâu trên màn hình cũng được: con trỏ không nhảy tới ngón tay mà đi theo hướng kéo (tốc độ 1 = đi đúng bằng quãng ngón tay). Chạm = click, chạm 2 ngón = chuột phải, kéo 2 ngón = cuộn, giữ rồi kéo = kéo thả. Nút \"Giữ chuột\" giữ nút trái để kéo thả dài. Chuột rời (máy tính bảng): trỏ tới đâu chuột máy tính tới đó, dùng được trái/phải/giữa, giữ và kéo, con lăn; bàn phím rời gửi thẳng phím sang máy tính.":
+    "Touch anywhere: the cursor does not jump to your finger, it follows the drag direction (speed 1 = same distance as your finger). Tap = click, two-finger tap = right click, two-finger drag = scroll, hold then drag = drag and drop. \"Hold mouse\" keeps the left button down for long drags. External mouse (tablet): the computer cursor follows your pointer, with left/right/middle buttons, hold and drag, and the wheel; an external keyboard sends keys straight to the computer.",
+};
+const LANG = (()=>{
+  const q=new URLSearchParams(location.search).get("lang"); // app Android truyền ngôn ngữ qua link
+  try{ if(q==="vi"||q==="en") localStorage.setItem("lang",q); return localStorage.getItem("lang")||q||"vi" }catch{ return q||"vi" }
+})();
+document.documentElement.lang = LANG;
+// T(): dịch một câu; câu từ máy tính gửi về có thể gồm nhiều phần nối bằng ": " nên dịch từng phần.
+function T(s){
+  if(LANG!=="en" || s==null) return s;
+  if(I18N_EN[s]!=null) return I18N_EN[s];
+  let out=String(s);
+  for(const k of Object.keys(I18N_EN).sort((a,b)=>b.length-a.length)) if(k.length>3 && out.includes(k)) out=out.split(k).join(I18N_EN[k]);
+  return out;
+}
+function applyLang(){
+  if(LANG!=="en") return;
+  const w=document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+  for(let n; (n=w.nextNode());){ const t=n.nodeValue.trim(); if(t && I18N_EN[t]!=null) n.nodeValue=n.nodeValue.replace(t,I18N_EN[t]); }
+  document.querySelectorAll("[placeholder],[title]").forEach(el=>{
+    for(const a of ["placeholder","title"]){ const v=el.getAttribute(a); if(v && I18N_EN[v]!=null) el.setAttribute(a,I18N_EN[v]); }
+  });
+}
+applyLang();
+
+function toast(msg){ const t=$("toast"); t.textContent=T(msg); t.classList.add("show"); clearTimeout(toast.h); toast.h=setTimeout(()=>t.classList.remove("show"),1800); }
 
 /* ------------------------------------------------------------ pairing */
 async function pair(pin){
@@ -163,7 +213,7 @@ async function pair(pin){
     store.set("token", j.token);
     history.replaceState(null,"",location.pathname);
     start();
-  }catch(e){ $("pairErr").textContent=e.message; }
+  }catch(e){ $("pairErr").textContent=T(e.message); }
 }
 $("pairBtn").onclick = () => pair($("pin").value.trim());
 $("pin").addEventListener("keydown", e => { if(e.key==="Enter") pair($("pin").value.trim()); });
@@ -189,7 +239,7 @@ function buildMonBar(list){
   if(list.length<2) return;
   const saved=+store.get("mon");
   curMon = (saved===0 || list.some(x=>x.i===saved)) && store.get("mon")!==null ? saved : 1;
-  const opts=[...list.map(x=>({i:x.i,label:"MH"+x.i})),{i:0,label:"Tất cả"}];
+  const opts=[...list.map(x=>({i:x.i,label:T("MH")+x.i})),{i:0,label:T("Tất cả")}];
   for(const o of opts){
     const b=document.createElement("button"); b.textContent=o.label; b.dataset.mon=o.i;
     b.onclick=()=>selectMon(o.i); bar.appendChild(b);
@@ -217,7 +267,7 @@ function connect(){
   ws.binaryType="blob";
   ws.onopen = ()=>{ retry=0; $("dot").classList.add("ok"); applyQuality(); };
   ws.onclose = ev=>{
-    $("dot").classList.remove("ok"); $("host").textContent="Mất kết nối, đang thử lại…";
+    $("dot").classList.remove("ok"); $("host").textContent=T("Mất kết nối, đang thử lại…");
     heldBtns.clear(); heldMods.clear(); document.querySelectorAll("[data-hold-btn],[data-hold-key]").forEach(b=>b.classList.remove("on"));
     setTimeout(async ()=>{
       const r = await fetch("api/check?token="+encodeURIComponent(store.get("token")||"")).catch(()=>null);
@@ -229,8 +279,8 @@ function connect(){
     if(typeof ev.data !== "string"){ showFrame(ev.data); return; }
     const m = JSON.parse(ev.data);
     if(m.t==="hello"){
-      info=m; $("host").textContent = m.host + (m.input?"":" (chỉ xem)");
-      $("verInfo").textContent = "RemotePC phiên bản " + (m.version||"?");
+      info=m; $("host").textContent = m.host + (m.input?"":T(" (chỉ xem)"));
+      $("verInfo").textContent = "Betagon Remote PC · " + T("Phiên bản") + " " + (m.version||"?");
       buildMonBar(m.monitors);
     }else if(m.t==="frame"){
       frameMeta=m;
@@ -543,10 +593,12 @@ const savedSpeed=store.get("speed"); if(savedSpeed) $("speed").value=savedSpeed;
 $("speed").onchange=()=>store.set("speed",$("speed").value);
 $("streamBtn").onclick=()=>{
   streaming=!streaming; send({t:"cfg",stream:streaming});
-  $("streamBtn").classList.toggle("on",streaming); $("streamBtn").textContent=streaming?"Đang bật":"Đã tắt (tiết kiệm pin)";
-  if(!streaming){ $("hint").textContent="Đã tắt hình, chuột/bàn phím vẫn hoạt động"; $("hint").classList.remove("hidden"); }
+  $("streamBtn").classList.toggle("on",streaming); $("streamBtn").textContent=T(streaming?"Đang bật":"Đã tắt (tiết kiệm pin)");
+  if(!streaming){ $("hint").textContent=T("Đã tắt hình, chuột/bàn phím vẫn hoạt động"); $("hint").classList.remove("hidden"); }
 };
-$("unpairBtn").onclick=()=>{ if(confirm("Huỷ ghép nối với máy tính này?")){ store.del("token"); location.reload(); } };
+$("langSel").value=LANG;
+$("langSel").onchange=()=>{ store.set("lang",$("langSel").value); location.reload(); };
+$("unpairBtn").onclick=()=>{ if(confirm(T("Huỷ ghép nối với máy tính này?"))){ store.del("token"); location.reload(); } };
 
 boot();
 </script>

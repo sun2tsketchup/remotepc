@@ -4,5 +4,5 @@ pluginManagement {
 dependencyResolutionManagement {
     repositories { google(); mavenCentral() }
 }
-rootProject.name = "RemotePC"
+rootProject.name = "BetagonRemotePC"
 include ':app'

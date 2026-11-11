@@ -1,4 +1,9 @@
-# Lịch sử phiên bản RemotePC
+# Lịch sử phiên bản Betagon Remote PC
+
+## v0.6.0 (12/11/2026)
+- Đổi tên ứng dụng thành **Betagon Remote PC** (file: BetagonRemotePC-v0.6.0.exe / .apk). Điện thoại đã ghép nối, mã PIN và cài đặt cũ vẫn giữ nguyên; tuỳ chọn tự chạy cùng Windows tự chuyển sang tên mới.
+- Thêm tiếng Anh cho cả phần mềm trên máy tính, giao diện điều khiển trên điện thoại và app Android. Mặc định tiếng Việt.
+- App Android truyền ngôn ngữ đã chọn sang giao diện điều khiển.
 
 ## v0.5.2 (02/11/2026)
 - App Android: sửa lỗi bấm "Quét mã QR" bị văng app. Chuyển sang trình quét QR của Google, không cần cấp quyền camera; nếu máy không hỗ trợ thì báo lỗi trong app thay vì văng.

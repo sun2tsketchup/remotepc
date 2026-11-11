@@ -43,6 +43,7 @@ var (
 	pSetCursor                = user32.NewProc("SetCursor")
 	pSetTimer                 = user32.NewProc("SetTimer")
 	pMessageBoxW              = user32.NewProc("MessageBoxW")
+	pSetWindowTextW           = user32.NewProc("SetWindowTextW")
 	pAdjustWindowRectEx       = user32.NewProc("AdjustWindowRectEx")
 	pGetDpiForSystem          = user32.NewProc("GetDpiForSystem")
 	pGetSystemMetrics         = user32.NewProc("GetSystemMetrics")
@@ -177,22 +178,23 @@ func (u *ui) font(name string, pt int, bold bool) uintptr {
 
 func (u *ui) layoutButtons() {
 	u.buttons = []button{
-		{"lan", rect{60, 82, 218, 116}, "Cùng Wi-Fi"},
-		{"net", rect{222, 82, 380, 116}, "Qua Internet"},
-		{"auto", rect{24, 590, 416, 620}, "Tự chạy ngầm khi bật Windows"},
-		{"nosleep", rect{24, 624, 416, 654}, "Giữ máy tính không ngủ để điện thoại vào bất cứ lúc nào"},
-		{"pin", rect{24, 672, 152, 716}, "Đổi mã PIN"},
-		{"unpair", rect{156, 672, 284, 716}, "Huỷ ghép nối"},
-		{"quit", rect{288, 672, 416, 716}, "Thoát hẳn"},
+		{"lan", rect{60, 82, 218, 116}, tr("Cùng Wi-Fi")},
+		{"net", rect{222, 82, 380, 116}, tr("Qua Internet")},
+		{"auto", rect{24, 590, 416, 620}, tr("Tự chạy ngầm khi bật Windows")},
+		{"nosleep", rect{24, 624, 416, 654}, tr("Giữ máy tính không ngủ để điện thoại vào bất cứ lúc nào")},
+		{"lang", rect{330, 16, 416, 42}, map[string]string{"vi": "English", "en": "Tiếng Việt"}[lang]},
+		{"pin", rect{24, 672, 152, 716}, tr("Đổi mã PIN")},
+		{"unpair", rect{156, 672, 284, 716}, tr("Huỷ ghép nối")},
+		{"quit", rect{288, 672, 416, 716}, tr("Thoát hẳn")},
 	}
 	if u.mode == "net" {
 		st, url, _ := u.app.Tunnel.Snapshot()
 		switch st {
 		case "on":
-			u.buttons = append(u.buttons, button{"copy", rect{100, 540, 220, 574}, "Sao chép link"}, button{"netoff", rect{224, 540, 340, 574}, "Tắt Internet"})
+			u.buttons = append(u.buttons, button{"copy", rect{100, 540, 220, 574}, tr("Sao chép link")}, button{"netoff", rect{224, 540, 340, 574}, tr("Tắt Internet")})
 			_ = url
 		case "error":
-			u.buttons = append(u.buttons, button{"netretry", rect{150, 540, 290, 574}, "Thử lại"})
+			u.buttons = append(u.buttons, button{"netretry", rect{150, 540, 290, 574}, tr("Thử lại")})
 		}
 	}
 }
@@ -261,14 +263,24 @@ func (u *ui) paint(dc uintptr) {
 	u.layoutButtons()
 
 	// tiêu đề + trạng thái
-	u.text(dc, "RemotePC", rect{24, 18, 300, 60}, u.font("Segoe UI", 20, true), colText, dtSingle|dtVCenter)
-	u.text(dc, "v"+Version, rect{166, 30, 260, 56}, u.font("Segoe UI", 9, false), colMute, dtSingle|dtVCenter)
-	n := activeConns.Load()
-	status, sc := "Đang chạy", colOk
-	if n > 0 {
-		status = fmt.Sprintf("%d thiết bị đang điều khiển", n)
+	u.text(dc, "Betagon Remote PC", rect{24, 12, 300, 46}, u.font("Segoe UI", 17, true), colText, dtSingle|dtVCenter)
+	u.text(dc, "v"+Version, rect{24, 46, 200, 64}, u.font("Segoe UI", 9, false), colMute, dtSingle|dtVCenter)
+	for _, b := range u.buttons { // nút đổi ngôn ngữ
+		if b.id == "lang" {
+			f := colPanel
+			if u.hover == b.id {
+				f = colHover
+			}
+			u.round(dc, u.sr(b.r), f, colLine, 8)
+			u.text(dc, b.text, b.r, u.font("Segoe UI", 9, true), colText, dtCenter|dtVCenter|dtSingle)
+		}
 	}
-	u.text(dc, "● "+status, rect{200, 18, 416, 60}, u.font("Segoe UI", 10, false), sc, dtSingle|dtVCenter|0x2 /*DT_RIGHT*/)
+	n := activeConns.Load()
+	status, sc := tr("Đang chạy"), colOk
+	if n > 0 {
+		status = fmt.Sprintf(tr("%d thiết bị đang điều khiển"), n)
+	}
+	u.text(dc, "● "+status, rect{150, 48, 416, 70}, u.font("Segoe UI", 9, false), sc, dtSingle|dtVCenter|0x2 /*DT_RIGHT*/)
 
 	// chọn chế độ
 	for _, b := range u.buttons[:2] {
@@ -290,20 +302,20 @@ func (u *ui) paint(dc uintptr) {
 	if u.mode == "lan" {
 		content = u.app.QRURL()
 		addr = u.app.URLs[0]
-		note = "Điện thoại dùng chung Wi-Fi với máy tính này"
+		note = tr("Điện thoại dùng chung Wi-Fi với máy tính này")
 	} else {
 		st, url, err := u.app.Tunnel.Snapshot()
 		switch st {
 		case "on":
 			content = url + "/?pin=" + u.app.Auth.PIN()
 			addr = url
-			note = "Dùng được ở bất cứ đâu có Internet (4G, Wi-Fi khác)"
+			note = tr("Dùng được ở bất cứ đâu có Internet (4G, Wi-Fi khác)")
 		case "downloading":
-			note = "Đang tải thành phần kết nối (chỉ lần đầu)…"
+			note = tr("Đang tải thành phần kết nối (chỉ lần đầu)…")
 		case "error":
 			note = err
 		default:
-			note = "Đang tạo đường truyền qua Internet…"
+			note = tr("Đang tạo đường truyền qua Internet…")
 		}
 	}
 	box := u.sr(qrBox)
@@ -330,10 +342,10 @@ func (u *ui) paint(dc uintptr) {
 		u.text(dc, note, rect{qrBox.L + 20, qrBox.T + 100, qrBox.R - 20, qrBox.B - 20}, u.font("Segoe UI", 10, false), colMute, dtCenter|dtWord)
 		note = ""
 	}
-	u.text(dc, "Quét mã QR bằng camera điện thoại để kết nối", rect{24, 400, 416, 424}, u.font("Segoe UI", 10, false), colMute, dtCenter|dtSingle|dtVCenter)
+	u.text(dc, tr("Quét mã QR bằng camera điện thoại để kết nối"), rect{24, 400, 416, 424}, u.font("Segoe UI", 10, false), colMute, dtCenter|dtSingle|dtVCenter)
 
 	// PIN
-	u.text(dc, "MÃ PIN", rect{24, 432, 416, 452}, u.font("Segoe UI", 9, true), colMute, dtCenter|dtSingle|dtVCenter)
+	u.text(dc, tr("MÃ PIN"), rect{24, 432, 416, 452}, u.font("Segoe UI", 9, true), colMute, dtCenter|dtSingle|dtVCenter)
 	u.text(dc, spacedPIN(u.app.Auth.PIN()), rect{24, 452, 416, 500}, u.font("Segoe UI", 28, true), colAcc, dtCenter|dtSingle|dtVCenter)
 
 	if addr != "" {
@@ -371,7 +383,7 @@ func (u *ui) paint(dc uintptr) {
 
 	// nút
 	for _, b := range u.buttons[2:] {
-		if b.id == "auto" || b.id == "nosleep" {
+		if b.id == "auto" || b.id == "nosleep" || b.id == "lang" {
 			continue
 		}
 		r := u.sr(b.r)
@@ -386,13 +398,13 @@ func (u *ui) paint(dc uintptr) {
 		u.round(dc, r, f, colLine, 10)
 		u.text(dc, b.text, b.r, u.font("Segoe UI", 10, false), t, dtCenter|dtVCenter|dtSingle)
 	}
-	u.text(dc, fmt.Sprintf("%d điện thoại đã ghép nối  ·  Đóng cửa sổ: vẫn chạy ngầm ở khay đồng hồ", u.app.Auth.Count()),
+	u.text(dc, fmt.Sprintf(tr("%d điện thoại đã ghép nối  ·  Đóng cửa sổ: vẫn chạy ngầm ở khay đồng hồ"), u.app.Auth.Count()),
 		rect{24, 726, 416, 756}, u.font("Segoe UI", 8, false), colMute, dtCenter|dtSingle|dtVCenter)
 }
 
 // ------------------------------------------------------------------ events --
 func msgBox(hwnd uintptr, text string, flags uintptr) int {
-	r, _, _ := pMessageBoxW.Call(hwnd, uintptr(unsafe.Pointer(wstr(text))), uintptr(unsafe.Pointer(wstr("RemotePC"))), flags)
+	r, _, _ := pMessageBoxW.Call(hwnd, uintptr(unsafe.Pointer(wstr(text))), uintptr(unsafe.Pointer(wstr("Betagon Remote PC"))), flags)
 	return int(r)
 }
 
@@ -432,7 +444,7 @@ func (u *ui) click(id string) {
 		u.settings.Save()
 	case "auto":
 		if err := setAutostart(!autostartEnabled()); err != nil {
-			msgBox(u.hwnd, "Không bật được tự chạy: "+err.Error(), 0x10)
+			msgBox(u.hwnd, tr("Không bật được tự chạy: ")+err.Error(), 0x10)
 		}
 	case "nosleep":
 		u.settings.NoSleep = !u.settings.NoSleep
@@ -441,17 +453,27 @@ func (u *ui) click(id string) {
 	case "copy":
 		if _, url, _ := u.app.Tunnel.Snapshot(); url != "" {
 			setClipboard(u.hwnd, url)
-			msgBox(u.hwnd, "Đã sao chép link:\n"+url+"\n\nGửi link này sang điện thoại rồi nhập mã PIN.", 0x40)
+			msgBox(u.hwnd, tr("Đã sao chép link:\n")+url+tr("\n\nGửi link này sang điện thoại rồi nhập mã PIN."), 0x40)
 		}
+	case "lang":
+		if lang == "vi" {
+			setLang("en")
+		} else {
+			setLang("vi")
+		}
+		u.settings.Lang = lang
+		u.settings.Save()
+		pSetWindowTextW.Call(u.hwnd, uintptr(unsafe.Pointer(wstr("Betagon Remote PC v"+Version))))
+		trayAdd(u.hwnd, u.icon) // cập nhật chữ ở khay
 	case "pin":
 		u.app.Auth.NewPIN()
 	case "unpair":
-		if msgBox(u.hwnd, "Huỷ ghép nối tất cả điện thoại?\nLần sau điện thoại phải nhập lại mã PIN.", 0x4|0x30) == 6 {
+		if msgBox(u.hwnd, tr("Huỷ ghép nối tất cả điện thoại?\nLần sau điện thoại phải nhập lại mã PIN."), 0x4|0x30) == 6 {
 			u.app.Auth.ClearTokens()
 			u.app.Auth.NewPIN()
 		}
 	case "quit":
-		if msgBox(u.hwnd, "Thoát hẳn RemotePC?\nĐiện thoại sẽ không vào được máy tính cho tới khi mở lại.", 0x4|0x20) == 6 {
+		if msgBox(u.hwnd, tr("Thoát hẳn Betagon Remote PC?\nĐiện thoại sẽ không vào được máy tính cho tới khi mở lại."), 0x4|0x20) == 6 {
 			pPostQuitMessage.Call(0)
 		}
 	}
@@ -526,7 +548,7 @@ func wndProc(hwnd, msg, wParam, lParam uintptr) uintptr {
 		if !u.settings.Hinted {
 			u.settings.Hinted = true
 			u.settings.Save()
-			trayBalloon(hwnd, u.icon, "RemotePC vẫn đang chạy ngầm", "Điện thoại vẫn vào được. Bấm biểu tượng RemotePC ở khay đồng hồ để mở lại, bấm chuột phải để thoát hẳn.")
+			trayBalloon(hwnd, u.icon, tr("Betagon Remote PC vẫn đang chạy ngầm"), tr("Điện thoại vẫn vào được. Bấm biểu tượng Betagon Remote PC ở khay đồng hồ để mở lại, bấm chuột phải để thoát hẳn."))
 		}
 		return 0
 	case wmDestroy:
@@ -546,6 +568,7 @@ func hideConsole(cmd *exec.Cmd) {
 func runUI(app *App) {
 	runtime.LockOSThread()
 	u := &ui{app: app, mode: "lan", fonts: map[string]uintptr{}, dpi: 96, settings: loadSettings()}
+	setLang(u.settings.Lang)
 	theUI = u
 	if pGetDpiForSystem.Find() == nil {
 		if d, _, _ := pGetDpiForSystem.Call(); d > 0 {
@@ -570,10 +593,10 @@ func runUI(app *App) {
 	sw, _, _ := pGetSystemMetrics.Call(0)
 	sh, _, _ := pGetSystemMetrics.Call(1)
 	x, y := (int32(sw)-w)/2, (int32(sh)-h)/2
-	hwnd, _, _ := pCreateWindowExW.Call(0, uintptr(unsafe.Pointer(wstr("RemotePCWindow"))), uintptr(unsafe.Pointer(wstr("RemotePC v"+Version))),
+	hwnd, _, _ := pCreateWindowExW.Call(0, uintptr(unsafe.Pointer(wstr("RemotePCWindow"))), uintptr(unsafe.Pointer(wstr("Betagon Remote PC v"+Version))),
 		style, uintptr(x), uintptr(y), uintptr(w), uintptr(h), 0, 0, inst, 0)
 	if hwnd == 0 {
-		fatalUI("Không tạo được cửa sổ RemotePC")
+		fatalUI(tr("Không tạo được cửa sổ Betagon Remote PC"))
 		os.Exit(1)
 	}
 	u.hwnd = hwnd

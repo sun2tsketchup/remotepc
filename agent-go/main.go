@@ -405,7 +405,7 @@ type App struct {
 func (a *App) QRURL() string { return fmt.Sprintf("%s/?pin=%s", a.URLs[0], a.Auth.PIN()) }
 
 // Version: tăng mỗi lần phát hành, xem CHANGELOG.md.
-var Version = "0.5.2"
+var Version = "0.6.0"
 
 var activeConns atomic.Int32
 
@@ -466,7 +466,7 @@ func main() {
 
 	ln, err := net.Listen("tcp", fmt.Sprintf("0.0.0.0:%d", *port))
 	if err != nil {
-		fatalUI(fmt.Sprintf("Không mở được cổng %d.\nCó thể RemotePC đang chạy rồi.\n\n%v", *port, err))
+		fatalUI(fmt.Sprintf(tr("Không mở được cổng %d.\nCó thể Betagon Remote PC đang chạy rồi.\n\n%v"), *port, err))
 		os.Exit(1)
 	}
 	go func() { log.Println(http.Serve(ln, handler)) }()

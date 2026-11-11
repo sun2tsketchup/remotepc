@@ -1,4 +1,4 @@
-name: Build RemotePC
+name: Build Betagon Remote PC
 
 on:
   push:
@@ -19,7 +19,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: RemotePC-windows
-          path: RemotePC-v*.exe
+          path: BetagonRemotePC-v*.exe
 
   android-apk:
     runs-on: ubuntu-latest
@@ -55,11 +55,11 @@ jobs:
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: gradle assembleRelease -PappVersion=${{ steps.ver.outputs.ver }} -PappCode=${{ steps.ver.outputs.code }}
       - name: Đặt tên file theo phiên bản
-        run: cp android/app/build/outputs/apk/release/app-release.apk RemotePC-v${{ steps.ver.outputs.ver }}.apk
+        run: cp android/app/build/outputs/apk/release/app-release.apk BetagonRemotePC-v${{ steps.ver.outputs.ver }}.apk
       - uses: actions/upload-artifact@v4
         with:
           name: RemotePC-android
-          path: RemotePC-v*.apk
+          path: BetagonRemotePC-v*.apk
 
   # Mỗi lần đẩy lên main: tạo/cập nhật bản phát hành v<phiên bản> kèm file exe và apk để tải.
   release:
@@ -79,8 +79,8 @@ jobs:
       - uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ steps.ver.outputs.ver }}
-          name: RemotePC v${{ steps.ver.outputs.ver }}
-          body: "Tải RemotePC-v${{ steps.ver.outputs.ver }}.exe cho máy tính Windows và RemotePC-v${{ steps.ver.outputs.ver }}.apk cho điện thoại Android. Xem CHANGELOG.md."
+          name: Betagon Remote PC v${{ steps.ver.outputs.ver }}
+          body: "Tải BetagonRemotePC-v${{ steps.ver.outputs.ver }}.exe cho máy tính Windows và BetagonRemotePC-v${{ steps.ver.outputs.ver }}.apk cho điện thoại Android. Xem CHANGELOG.md."
           files: |
-            RemotePC-v*.exe
-            RemotePC-v*.apk
+            BetagonRemotePC-v*.exe
+            BetagonRemotePC-v*.apk

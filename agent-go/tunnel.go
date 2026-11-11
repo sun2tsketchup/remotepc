@@ -114,11 +114,11 @@ func (t *Tunnel) run(port int) {
 		} else if u := cloudflaredURL(); u != "" {
 			t.set("downloading", "", "")
 			if err := download(u, bin); err != nil {
-				t.set("error", "", "Không tải được cloudflared: "+err.Error())
+				t.set("error", "", tr("Không tải được cloudflared: ")+err.Error())
 				return
 			}
 		} else {
-			t.set("error", "", "Hãy cài cloudflared trước (brew install cloudflared)")
+			t.set("error", "", tr("Hãy cài cloudflared trước (brew install cloudflared)"))
 			return
 		}
 	}
@@ -128,7 +128,7 @@ func (t *Tunnel) run(port int) {
 	stderr, _ := cmd.StderrPipe()
 	cmd.Stdout = cmd.Stderr
 	if err := cmd.Start(); err != nil {
-		t.set("error", "", "Không chạy được cloudflared: "+err.Error())
+		t.set("error", "", tr("Không chạy được cloudflared: ")+err.Error())
 		return
 	}
 	t.mu.Lock()
@@ -155,15 +155,15 @@ func (t *Tunnel) run(port int) {
 		t.set("on", u, "")
 	case <-time.After(60 * time.Second):
 		cmd.Process.Kill()
-		t.set("error", "", "Hết thời gian chờ tạo đường truyền, kiểm tra Internet rồi thử lại")
+		t.set("error", "", tr("Hết thời gian chờ tạo đường truyền, kiểm tra Internet rồi thử lại"))
 		return
 	case err := <-exited:
-		t.set("error", "", fmt.Sprintf("cloudflared đã dừng (%v)", err))
+		t.set("error", "", fmt.Sprintf(tr("cloudflared đã dừng (%v)"), err))
 		return
 	}
 	err := <-exited
 	if s, _, _ := t.Snapshot(); s != "off" {
-		t.set("error", "", fmt.Sprintf("Mất đường truyền Internet (%v), bấm để thử lại", err))
+		t.set("error", "", fmt.Sprintf(tr("Mất đường truyền Internet (%v), bấm để thử lại"), err))
 	}
 }
 

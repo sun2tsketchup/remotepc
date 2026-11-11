@@ -60,7 +60,7 @@ public class MainActivity extends Activity {
             @Override
             public void onReceivedError(WebView view, int code, String desc, String url) {
                 if (!url.startsWith("file:")) {
-                    showLauncher("Không kết nối được tới máy tính. Kiểm tra RemotePC đang chạy và cùng mạng.");
+                    showLauncher("Không kết nối được tới máy tính. Kiểm tra Betagon Remote PC đang chạy và cùng mạng.");
                 }
             }
         });
@@ -112,9 +112,9 @@ public class MainActivity extends Activity {
         String url = web.getUrl();
         if (url != null && !url.startsWith("file:")) {
             new AlertDialog.Builder(this)
-                    .setMessage("Ngắt kết nối và quay về danh sách máy tính?")
-                    .setPositiveButton("Ngắt", (d, w) -> showLauncher(null))
-                    .setNegativeButton("Ở lại", null)
+                    .setMessage("en".equals(prefs.getString("lang", "vi")) ? "Disconnect and go back to the computer list?" : "Ngắt kết nối và quay về danh sách máy tính?")
+                    .setPositiveButton("en".equals(prefs.getString("lang", "vi")) ? "Disconnect" : "Ngắt", (d, w) -> showLauncher(null))
+                    .setNegativeButton("en".equals(prefs.getString("lang", "vi")) ? "Stay" : "Ở lại", null)
                     .show();
         } else {
             super.onBackPressed();
@@ -140,6 +140,16 @@ public class MainActivity extends Activity {
         @JavascriptInterface
         public void savePcs(String json) {
             prefs.edit().putString("pcs", json).apply();
+        }
+
+        @JavascriptInterface
+        public String getLang() {
+            return prefs.getString("lang", "vi");
+        }
+
+        @JavascriptInterface
+        public void setLang(String l) {
+            prefs.edit().putString("lang", "en".equals(l) ? "en" : "vi").apply();
         }
 
         @JavascriptInterface
